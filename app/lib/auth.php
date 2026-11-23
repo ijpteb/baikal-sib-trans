@@ -11,6 +11,7 @@ const LOGIN_MAX_ATTEMPTS = 5;          // попыток входа…
 const LOGIN_WINDOW_SECONDS = 900;      // …за 15 минут с одного адреса
 const ADMIN_IDLE_SECONDS = 8 * 3600;   // без действий 8 часов — нужно войти снова
 const RESET_PASSWORD_FILE = 'RESET_PASSWORD';
+const SETUP_CODE_FILE = 'SETUP_CODE.txt';
 
 function admin_session_start(): void
 {
@@ -45,11 +46,29 @@ function admin_session_start(): void
 /** Вызывается для каждой страницы админки до её отрисовки. */
 function admin_boot(bool $requireAuth, bool $json = false): void
 {
+    // Код админки (формы, картинки, резервная копия) нужен только здесь — публичные страницы его не загружают.
+    $adminFiles = glob(APP_DIR . '/admin/*.php') ?: [];
+    sort($adminFiles);
+    foreach ($adminFiles as $adminFile) {
+        require_once $adminFile;
+    }
+
     admin_session_start();
     header('Cache-Control: no-store, max-age=0');
     header('X-Robots-Tag: noindex, nofollow');
 
     $path = request_path();
+
+    // Файл больше, чем разрешает хостинг: PHP молча отбрасывает всю форму. Объясняем по-человечески.
+    if (is_post() && !$_POST && !$_FILES && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0) {
+        $message = 'Файл слишком большой: хостинг принимает не больше ' . format_bytes(upload_limit_bytes())
+            . '. Уменьшите фото и попробуйте ещё раз.';
+        if ($json) {
+            send_json(['ok' => false, 'error' => $message], 413);
+        }
+        flash('error', $message);
+        redirect($path . query_string_suffix());
+    }
     if (!admin_has_users() && $path !== '/admin/setup') {
         if ($json) {
             send_json(['ok' => false, 'error' => 'Сначала создайте учётную запись администратора.'], 401);
@@ -186,6 +205,78 @@ function password_reset_finish(): bool
 {
     $file = DATA_DIR . '/' . RESET_PASSWORD_FILE;
     return !is_file($file) || @unlink($file);
+}
+
+/**
+ * Код для первой настройки и для сброса пароля. Сайт кладёт его в файл data/SETUP_CODE.txt:
+ * прочитать файл может только тот, у кого есть доступ к хостингу. Так чужой человек не займёт админку,
+ * даже если откроет /admin/setup раньше владельца.
+ */
+function setup_code(): ?string
+{
+    $file = DATA_DIR . '/' . SETUP_CODE_FILE;
+    if (is_file($file)) {
+        $code = preg_replace('/\D+/', '', (string) file_get_contents($file)) ?? '';
+        if (strlen($code) === 8) {
+            return $code;
+        }
+    }
+    $code = (string) random_int(10000000, 99999999);
+    // В пояснении не должно быть других цифр: при чтении из файла берутся все цифры подряд.
+    $text = 'Код для настройки админки сайта: ' . substr($code, 0, 4) . '-' . substr($code, 4) . "\n\n"
+        . "Введите его на странице /admin/setup.\n"
+        . "После настройки этот файл удалится сам.\n";
+    if (@file_put_contents($file, $text, LOCK_EX) === false) {
+        return null;
+    }
+    return $code;
+}
+
+function setup_code_clear(): void
+{
+    $file = DATA_DIR . '/' . SETUP_CODE_FILE;
+    if (is_file($file)) {
+        @unlink($file);
+    }
+}
+
+/** Ограничение размера загрузки, которое задано на хостинге (upload_max_filesize и post_max_size). */
+function upload_limit_bytes(): int
+{
+    $limits = array_filter([
+        ini_bytes((string) ini_get('upload_max_filesize')),
+        ini_bytes((string) ini_get('post_max_size')),
+    ], static fn (int $v): bool => $v > 0);
+    return $limits ? min($limits) : 0;
+}
+
+/** «16M» → 16777216. */
+function ini_bytes(string $value): int
+{
+    $value = trim($value);
+    if ($value === '' || $value === '-1') {
+        return 0;
+    }
+    $number = (int) $value;
+    return match (strtolower(substr($value, -1))) {
+        'g' => $number * 1024 * 1024 * 1024,
+        'm' => $number * 1024 * 1024,
+        'k' => $number * 1024,
+        default => $number,
+    };
+}
+
+/** 15728640 → «15 МБ». */
+function format_bytes(int $bytes): string
+{
+    if ($bytes <= 0) {
+        return 'неизвестно';
+    }
+    if ($bytes >= 1024 * 1024) {
+        $mb = $bytes / 1024 / 1024;
+        return ($mb >= 10 ? (string) round($mb) : str_replace('.', ',', (string) round($mb, 1))) . "\u{00A0}МБ";
+    }
+    return max(1, (int) round($bytes / 1024)) . "\u{00A0}КБ";
 }
 
 /** Требования к паролю. Возвращает текст ошибки или null. */

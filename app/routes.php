@@ -27,7 +27,7 @@ return [
     [['GET', 'POST'], '/admin/setup', 'admin/setup', ['area' => 'admin']],
     [['GET', 'POST'], '/admin/login', 'admin/login', ['area' => 'admin']],
     [['POST'], '/admin/logout', 'admin/logout', ['area' => 'admin', 'auth' => true]],
-    [['GET'], '/admin', 'admin/dashboard', ['area' => 'admin', 'auth' => true]],
+    [['GET', 'POST'], '/admin', 'admin/dashboard', ['area' => 'admin', 'auth' => true]],
     [['POST'], '/admin/upload', 'admin/upload', ['area' => 'admin', 'auth' => true, 'json' => true]],
     [['POST'], '/admin/(?<section>vehicles|services|advantages|steps|stats|reviews|partners|faq)/reorder', 'admin/reorder', ['area' => 'admin', 'auth' => true, 'json' => true]],
     [['POST'], '/admin/(?<section>vehicles|services|advantages|steps|stats|reviews|partners|faq)/(?<id>\d+)/toggle', 'admin/toggle', ['area' => 'admin', 'auth' => true, 'json' => true]],

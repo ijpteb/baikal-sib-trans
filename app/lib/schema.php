@@ -156,6 +156,10 @@ final class Schema
                     SQL);
                 Seed::run($db);
             },
+            // Формат файла фото: WebP, а на хостинге без WebP — JPEG.
+            2 => static function (PDO $db): void {
+                $db->exec("ALTER TABLE vehicle_photos ADD COLUMN ext TEXT NOT NULL DEFAULT 'webp'");
+            },
         ];
     }
 

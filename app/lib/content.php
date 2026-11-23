@@ -113,6 +113,7 @@ function photo_from_row(array $row): array
     return [
         'id' => (int) $row['id'],
         'file' => (string) $row['file'],
+        'ext' => in_array($row['ext'] ?? 'webp', ['webp', 'jpg', 'png'], true) ? (string) ($row['ext'] ?? 'webp') : 'webp',
         'widths' => array_values(array_map('intval', json_decode_array($row['widths']))),
         'w' => (int) $row['width'],
         'h' => (int) $row['height'],
