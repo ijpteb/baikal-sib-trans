@@ -23,7 +23,7 @@ $renderField = static function (string $key, array $f) use ($values, $errors): s
     return match ($f['type']) {
         'textarea' => af_textarea($key, $f['label'], $value, $o + ['rows' => $f['rows'] ?? 4, 'wide' => true]),
         'int' => af_input($key, $f['label'], $value, $o + ['inputmode' => 'numeric']),
-        'date' => af_input($key, $f['label'], $value, ['type' => 'date'] + $o),
+        'date' => af_date($key, $f['label'], $value, $o + ['picker_max' => !empty($f['past']) ? date('Y-m-d') : null]),
         'url' => af_input($key, $f['label'], $value, ['type' => 'url', 'inputmode' => 'url', 'placeholder' => 'https://', 'wide' => true] + $o),
         'icon' => af_icons($key, $f['label'], (string) $value),
         'image' => af_image($key, $f['label'], $value, (string) $f['purpose'], $o),

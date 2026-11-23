@@ -24,14 +24,16 @@ if (mb_strlen($name) > 18) {
     $shortName = $shortName !== '' ? $shortName : mb_substr($name, 0, 18);
 }
 
+// ?v=… — чтобы телефон взял новый значок, когда его поменяют.
+$v = '?v=' . favicon_version();
 $icons = [
-    ['src' => '/icon-192.png', 'sizes' => '192x192', 'type' => 'image/png'],
-    ['src' => '/icon-512.png', 'sizes' => '512x512', 'type' => 'image/png'],
+    ['src' => '/icon-192.png' . $v, 'sizes' => '192x192', 'type' => 'image/png'],
+    ['src' => '/icon-512.png' . $v, 'sizes' => '512x512', 'type' => 'image/png'],
 ];
 if (!site_has_custom_favicon()) {
     // Стандартный значок залит цветом во всю площадь, знак — в середине:
     // Android может обрезать его под свою форму (круг, капля), и значок не окажется в белом кружке.
-    $icons[] = ['src' => '/icon-512.png', 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'maskable'];
+    $icons[] = ['src' => '/icon-512.png' . $v, 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'maskable'];
 }
 
 echo json_encode([

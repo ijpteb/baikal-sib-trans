@@ -32,12 +32,13 @@ $today = date('Y-m-d');
       <div class="field-row">
         <div class="field" data-field="date">
           <label class="field__label" for="in-date">Желаемая дата</label>
-          <input class="input" type="date" id="in-date" name="date" min="<?= e($today) ?>" aria-describedby="in-date-error">
+          <?= dt_input('date', 'in-date', ['min' => $today, 'describedby' => 'in-date-error']) ?>
           <p class="field__error" id="in-date-error"><?= icon('alert-circle') ?><span></span></p>
         </div>
         <div class="field" data-field="time">
           <label class="field__label" for="in-time">Время</label>
-          <input class="input" type="time" id="in-time" name="time" step="900">
+          <?= dt_input('time', 'in-time', ['step' => '900', 'describedby' => 'in-time-error']) ?>
+          <p class="field__error" id="in-time-error"><?= icon('alert-circle') ?><span></span></p>
         </div>
       </div>
       <div class="field" data-field="car">

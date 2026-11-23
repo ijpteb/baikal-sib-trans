@@ -112,11 +112,11 @@ sort($icons);
       <div class="field-row">
         <div class="field">
           <label class="field__label" for="sg-date">Дата</label>
-          <input class="input" id="sg-date" type="date">
+          <?= dt_input('date', 'sg-date', ['name' => 'sg_date']) ?>
         </div>
         <div class="field">
           <label class="field__label" for="sg-time">Время</label>
-          <input class="input" id="sg-time" type="time">
+          <?= dt_input('time', 'sg-time', ['name' => 'sg_time']) ?>
         </div>
       </div>
       <div class="field-row">

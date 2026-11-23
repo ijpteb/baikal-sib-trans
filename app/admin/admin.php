@@ -188,6 +188,29 @@ function af_input(string $name, string $label, mixed $value, array $o = []): str
     return af_wrap($id, $label, '<input' . attrs($attributes) . '>', $o);
 }
 
+/**
+ * Дата: всегда ДД.ММ.ГГГГ и значок календаря, как в заявке на сайте (dt_input()).
+ * Встроенное поле даты в браузере на английском показывало бы ММ/ДД/ГГГГ. В базе дата хранится как ГГГГ-ММ-ДД.
+ * Опция picker_max — последний день, который можно выбрать в календаре (ГГГГ-ММ-ДД).
+ */
+function af_date(string $name, string $label, mixed $value, array $o = []): string
+{
+    $id = (string) ($o['id'] ?? af_id($name));
+    $text = is_scalar($value) ? (string) $value : '';
+    if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $text, $m)) {
+        $text = "{$m[3]}.{$m[2]}.{$m[1]}";
+    }
+    $control = dt_input('date', $id, [
+        'name' => $name,
+        'value' => $text,
+        'required' => !empty($o['required']),
+        'invalid' => !empty($o['error']),
+        'describedby' => af_described_by($id, $o),
+        'max' => $o['picker_max'] ?? null,
+    ]);
+    return af_wrap($id, $label, $control, $o);
+}
+
 function af_textarea(string $name, string $label, mixed $value, array $o = []): string
 {
     $id = (string) ($o['id'] ?? af_id($name));
@@ -408,7 +431,7 @@ function admin_tables(): array
                 'author' => ['type' => 'text', 'label' => 'Имя автора', 'required' => true, 'max' => 80, 'hint' => 'Например: «Анна Петрова» или «Анна П.».'],
                 'company' => ['type' => 'text', 'label' => 'Компания или должность', 'max' => 120, 'optional' => true],
                 'text' => ['type' => 'textarea', 'label' => 'Текст отзыва', 'required' => true, 'max' => 1200, 'rows' => 6, 'counter' => true],
-                'review_date' => ['type' => 'date', 'label' => 'Дата отзыва', 'optional' => true],
+                'review_date' => ['type' => 'date', 'label' => 'Дата отзыва', 'optional' => true, 'past' => true],
             ],
         ],
         'partners' => [
@@ -500,9 +523,18 @@ function admin_validate_fields(array $fields, array $input): array
                 $value = int_or_null($raw, (int) ($f['min'] ?? 0), (int) ($f['max'] ?? 100000000));
                 break;
             case 'date':
-                $value = str_line($raw, 10);
-                if ($value !== '' && !admin_valid_date($value)) {
-                    $errors[$key] = 'Укажите дату в формате ДД.ММ.ГГГГ.';
+                $value = str_line($raw, 20);
+                if ($value !== '') {
+                    $ymd = admin_parse_date($value);
+                    if ($ymd === null) {
+                        $errors[$key] = admin_date_parts($value) === null
+                            ? 'Укажите дату в формате ДД.ММ.ГГГГ, например 25.12.2026.'
+                            : 'Такой даты нет — проверьте день, месяц и год.';
+                    } elseif (!empty($f['past']) && $ymd > date('Y-m-d')) {
+                        $errors[$key] = 'Эта дата ещё не наступила — проверьте год.';
+                    } else {
+                        $value = $ymd;
+                    }
                 }
                 break;
             case 'url':
@@ -534,6 +566,31 @@ function admin_validate_fields(array $fields, array $input): array
         $values[$key] = $value;
     }
     return [$values, $errors];
+}
+
+/** «25.12.2026», «5.1.26», «25/12/2026» или «2026-12-25» → [год, месяц, день]; null — если это не похоже на дату. */
+function admin_date_parts(string $text): ?array
+{
+    $text = trim($text);
+    if (preg_match('/^(\d{4})-(\d{1,2})-(\d{1,2})$/', $text, $m)) {
+        return [(int) $m[1], (int) $m[2], (int) $m[3]];
+    }
+    if (preg_match('/^(\d{1,2})[.\/ -](\d{1,2})[.\/ -](\d{4}|\d{2})$/', $text, $m)) {
+        $year = (int) $m[3];
+        return [strlen($m[3]) === 2 ? $year + 2000 : $year, (int) $m[2], (int) $m[1]];
+    }
+    return null;
+}
+
+/** То же, но сразу «2026-12-25»; null — если это не дата или такого дня нет. */
+function admin_parse_date(string $text): ?string
+{
+    $parts = admin_date_parts($text);
+    if ($parts === null) {
+        return null;
+    }
+    $ymd = sprintf('%04d-%02d-%02d', ...$parts);
+    return admin_valid_date($ymd) ? $ymd : null;
 }
 
 function admin_valid_date(string $ymd): bool

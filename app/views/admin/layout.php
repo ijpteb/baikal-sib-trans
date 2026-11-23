@@ -29,11 +29,14 @@ foreach (['check-circle', 'alert-circle', 'info', 'trash', 'arrow-left', 'arrow-
 <title><?= e($title) ?> — админка «<?= e($siteName) ?>»</title>
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#0B4F8A">
-<link rel="icon" href="/favicon.ico" sizes="32x32">
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico?v=<?= e(favicon_version()) ?>" sizes="32x32">
+<?php if (!site_has_custom_favicon()): ?>
+<link rel="icon" href="/favicon.svg?v=<?= e(favicon_version()) ?>" type="image/svg+xml">
+<?php endif; ?>
 <link rel="preload" href="/assets/fonts/manrope-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="<?= e(asset('css/site.css')) ?>">
 <link rel="stylesheet" href="<?= e(asset('css/admin.css')) ?>">
+<script nonce="<?= e(csp_nonce()) ?>">document.documentElement.classList.add('js')</script>
 <script type="module" src="<?= e(asset('js/admin.js')) ?>"></script>
 </head>
 <body class="<?= e(classes('admin', $bare ? 'admin--bare' : null)) ?>">

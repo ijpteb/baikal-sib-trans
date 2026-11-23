@@ -2,7 +2,7 @@
  * Скрипт админки «Байкал Сиб-Транс».
  * Меню на телефоне, подтверждение удаления, предупреждение о несохранённых изменениях,
  * счётчики символов, показ пароля, загрузка картинок и фото машины,
- * порядок записей и переключатель «На сайте» без перезагрузки страницы.
+ * порядок записей и переключатель «На сайте» без перезагрузки страницы, поле даты ДД.ММ.ГГГГ.
  * Без скрипта админка тоже работает — просто чуть менее удобно.
  */
 
@@ -677,6 +677,147 @@ function initRows() {
   });
 }
 
+/* ---------- Дата ДД.ММ.ГГГГ ---------- */
+/*
+ * Упрощённая копия initDateTimeInputs() из site.js: текстовое поле с маской и прозрачный календарь поверх значка.
+ * Код повторён намеренно: скрипты долго хранятся в кэше браузера, и общий файл без номера версии мог бы устареть.
+ * Проверку даты делает сервер при сохранении.
+ */
+
+const MONTH_STEMS = ['янв', 'фев', 'мар', 'апр', 'ма', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+
+function maskDate(raw) {
+  const text = String(raw || '');
+  const yearFirst = /^\s*(\d{4})[-./](\d{1,2})[-./](\d{1,2})\s*$/.exec(text);
+  if (yearFirst) return `${yearFirst[3].padStart(2, '0')}.${yearFirst[2].padStart(2, '0')}.${yearFirst[1]}`;
+  const words = /^\s*(\d{1,2})\s+([а-яё]{3,})\.?\s+(\d{4})(?:\s*г(?:ода?)?\.?)?\s*$/i.exec(text);
+  if (words) {
+    const month = MONTH_STEMS.findIndex((stem) => words[2].toLowerCase().startsWith(stem)) + 1;
+    if (month) return `${words[1].padStart(2, '0')}.${String(month).padStart(2, '0')}.${words[3]}`;
+  }
+  const groups = text.split(/\D+/);
+  let digits = '';
+  groups.forEach((group, i) => {
+    digits += i < groups.length - 1 && group.length === 1 && digits.length < 4 ? `0${group}` : group;
+  });
+  if (/^[4-9]/.test(digits)) digits = `0${digits}`;
+  if (/^\d{2}[2-9]/.test(digits)) digits = `${digits.slice(0, 2)}0${digits.slice(2)}`;
+  digits = digits.slice(0, 8);
+  let out = digits.slice(0, 2);
+  if (digits.length > 2) out += `.${digits.slice(2, 4)}`;
+  if (digits.length > 4) out += `.${digits.slice(4)}`;
+  if (/\D$/.test(text) && (digits.length === 2 || digits.length === 4)) out += '.';
+  return out;
+}
+
+/** «25.12.26» → «25.12.2026», «1.2.2026» → «01.02.2026». Стёртый день или месяц («25..2026», «25.2026») не «досочиняем». */
+function normalizeDate(value) {
+  const raw = String(value || '').trim();
+  if (/^\.|\.\s*\.|^\d{1,2}\.\d{4}$/.test(raw)) return raw;
+  const text = maskDate(raw);
+  const short = /^(\d{2})\.(\d{2})\.(\d{2})$/.exec(text);
+  return short ? `${short[1]}.${short[2]}.20${short[3]}` : text;
+}
+
+function initDateInputs() {
+  const coarse = window.matchMedia('(pointer: coarse)');
+  $$('[data-dt="date"]').forEach((wrap) => {
+    const text = $('[data-dt-text]', wrap);
+    const native = $('[data-dt-native]', wrap);
+    if (!text || !native) return;
+    text.addEventListener('input', (event) => {
+      // Значение из календаря или вставки уже приведено к виду.
+      if (!event.isTrusted) return;
+      if (typeof event.inputType === 'string' && event.inputType.startsWith('delete')) return;
+      const raw = text.value;
+      const caret = text.selectionStart ?? raw.length;
+      if (caret < raw.length && document.activeElement === text) {
+        // Правят день или месяц в середине: ничего не переставляем (иначе «1» станет «01»
+        // и вторая цифра не поместится), только убираем лишние знаки.
+        const clean = raw.replace(/[^\d.]/g, '');
+        if (clean === raw) return;
+        const pos = raw.slice(0, caret).replace(/[^\d.]/g, '').length;
+        text.value = clean;
+        text.setSelectionRange(pos, pos);
+        return;
+      }
+      const next = maskDate(raw);
+      if (next !== raw) text.value = next;
+    });
+    text.addEventListener('change', () => {
+      // Дописываем нули и год, только если получилась полная дата; остальное проверит сервер.
+      const next = normalizeDate(text.value);
+      if (next !== text.value && /^\d{2}\.\d{2}\.\d{4}$/.test(next)) text.value = next;
+    });
+    // Вставка, перетаскивание мышью, подсказка клавиатуры. Разбираем сами, иначе браузер обрежет текст
+    // по длине поля раньше, чем уберутся пробелы и слова.
+    const insert = (fragment) => {
+      const piece = String(fragment || '').trim();
+      if (!piece) return;
+      // Целая дата заменяет старую — вклеенная в середину, она смешалась бы со старой датой.
+      let next = normalizeDate(piece);
+      if (!/^\d{2}\.\d{2}\.\d{4}$/.test(next)) {
+        const start = text.selectionStart ?? text.value.length;
+        const end = text.selectionEnd ?? start;
+        const limit = text.maxLength > 0 ? text.maxLength : Infinity;
+        // Поле заполнено и ничего не выделено — как и сам браузер, ничего не добавляем.
+        if (start === end && text.value.length >= limit) return;
+        next = normalizeDate(`${text.value.slice(0, start)}${piece}${text.value.slice(end)}`).slice(0, limit);
+      }
+      if (next === text.value) return;
+      text.value = next;
+      text.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+    text.addEventListener('paste', (event) => {
+      const pasted = event.clipboardData?.getData('text');
+      if (!pasted) return;
+      event.preventDefault();
+      insert(pasted);
+    });
+    text.addEventListener('beforeinput', (event) => {
+      // Текст целиком (перетащили мышью, подсказка клавиатуры) — так же, как вставка. Одиночные клавиши — через 'input'.
+      if (event.isComposing || !event.cancelable) return;
+      const type = event.inputType;
+      if (type !== 'insertFromDrop' && type !== 'insertText' && type !== 'insertReplacementText') return;
+      const piece = event.data ?? event.dataTransfer?.getData('text/plain') ?? '';
+      if (piece.length < 2) return;
+      event.preventDefault();
+      insert(piece);
+    });
+    // Календарь открывается на уже введённой дате.
+    const sync = () => {
+      const m = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(text.value.trim());
+      native.value = m ? `${m[3]}-${m[2]}-${m[1]}` : '';
+    };
+    const canShowPicker = typeof native.showPicker === 'function';
+    native.addEventListener('pointerdown', sync);
+    native.addEventListener('focus', sync);
+    native.addEventListener('mousedown', (event) => {
+      if (!coarse.matches && canShowPicker) event.preventDefault();
+    });
+    native.addEventListener('click', (event) => {
+      if (coarse.matches || !canShowPicker) return;
+      try {
+        sync();
+        text.focus({ preventScroll: true });
+        native.showPicker();
+        event.preventDefault();
+      } catch (error) {
+        /* браузер откроет календарь сам */
+      }
+    });
+    const pick = (event) => {
+      event.stopPropagation();
+      const next = native.value ? maskDate(native.value) : '';
+      if (next === text.value) return;
+      text.value = next;
+      text.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+    native.addEventListener('input', pick);
+    native.addEventListener('change', pick);
+  });
+}
+
 /* ---------- Поле с ошибкой после сохранения ---------- */
 
 function focusFirstError() {
@@ -694,4 +835,5 @@ initPasswords();
 initUploaders();
 initGalleries();
 initRows();
+initDateInputs();
 focusFirstError();

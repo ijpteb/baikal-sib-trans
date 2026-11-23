@@ -10,5 +10,6 @@
 # macOS
 .DS_Store
 
-# Локальные настройки Claude Code
-/.claude/settings.local.json
+# Служебные файлы Claude Code: в них пути этого компьютера. Хранится только описание PHP для проверки.
+/.claude/*
+!/.claude/php.Dockerfile

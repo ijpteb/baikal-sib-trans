@@ -55,7 +55,7 @@ $today = date('Y-m-d');
       <div class="quick-form__grid">
         <div class="field">
           <label class="field__label" for="qf-date">Дата</label>
-          <input class="input" type="date" id="qf-date" name="date" min="<?= e($today) ?>">
+          <?= dt_input('date', 'qf-date', ['min' => $today]) ?>
         </div>
         <div class="field">
           <label class="field__label" for="qf-passengers">Пассажиров</label>
@@ -67,7 +67,7 @@ $today = date('Y-m-d');
         </div>
         <div class="field field--wide">
           <label class="field__label" for="qf-from">Откуда</label>
-          <input class="input" type="text" id="qf-from" name="from" maxlength="200" placeholder="Например: аэропорт Иркутска" autocomplete="off">
+          <input class="input" type="text" id="qf-from" name="from" maxlength="200" placeholder="Например: аэропорт" autocomplete="off">
         </div>
         <div class="field field--wide">
           <label class="field__label" for="qf-to">Куда</label>

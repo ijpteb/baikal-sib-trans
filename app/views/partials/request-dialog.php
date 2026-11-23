@@ -37,12 +37,13 @@ $today = date('Y-m-d');
       <div class="field-row">
         <div class="field" data-field="date">
           <label class="field__label" for="rq-date">Дата</label>
-          <input class="input" type="date" id="rq-date" name="date" min="<?= e($today) ?>" aria-describedby="rq-date-error">
+          <?= dt_input('date', 'rq-date', ['min' => $today, 'describedby' => 'rq-date-error']) ?>
           <p class="field__error" id="rq-date-error"><?= icon('alert-circle') ?><span></span></p>
         </div>
         <div class="field" data-field="time">
           <label class="field__label" for="rq-time">Время подачи</label>
-          <input class="input" type="time" id="rq-time" name="time" step="300">
+          <?= dt_input('time', 'rq-time', ['step' => '300', 'describedby' => 'rq-time-error']) ?>
+          <p class="field__error" id="rq-time-error"><?= icon('alert-circle') ?><span></span></p>
         </div>
       </div>
 

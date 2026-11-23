@@ -13,7 +13,7 @@ $tagline = trim((string) setting('site.tagline', ''));
 <?php if ($logo !== null): ?>
   <?= image_tag($logo, '220px', ['class' => 'logo__img', 'alt' => $name, 'loading' => null, 'decoding' => null, 'src' => image_url($logo, 480)]) ?>
 <?php else: ?>
-  <img class="logo__mark" src="<?= e(asset('img/logo-mark.svg')) ?>" width="40" height="40" alt="">
+  <img class="logo__mark" src="<?= e(asset('img/logo-mark.svg')) ?>" width="48" height="48" alt="">
   <span class="logo__text">
     <span class="logo__name"><?= e($name) ?></span>
 <?php if ($tagline !== ''): ?>

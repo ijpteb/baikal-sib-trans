@@ -64,6 +64,33 @@ function site_has_custom_favicon(): bool
     return is_array($icon) && !empty($icon['file']);
 }
 
+/**
+ * Номер версии значков для адресов вида /favicon.svg?v=…
+ * Меняется вместе с самими значками (новые файлы или свой значок из админки). Без него браузер,
+ * который уже видел сайт, ещё долго показывал бы во вкладке прежний значок из своей памяти.
+ */
+function favicon_version(): string
+{
+    static $version = null;
+    if ($version !== null) {
+        return $version;
+    }
+    $files = [PUBLIC_DIR . '/assets/img/favicon.svg'];
+    foreach ([32, 180, 192, 512] as $size) {
+        $files[] = PUBLIC_DIR . '/assets/img/icons/icon-' . $size . '.png';
+    }
+    $icon = setting('site.favicon', []);
+    $custom = is_array($icon) ? (string) ($icon['file'] ?? '') : '';
+    if ($custom !== '' && preg_match('/^[a-z0-9-]+$/', $custom)) {
+        $files[] = UPLOADS_DIR . '/' . $custom . '-32.png';
+    }
+    $stamp = $custom;
+    foreach ($files as $file) {
+        $stamp .= '|' . (is_file($file) ? (string) filemtime($file) : '-');
+    }
+    return $version = substr(md5($stamp), 0, 10);
+}
+
 /** Типы поездок для формы заявки — из раздела «Для каких поездок». */
 function trip_types(): array
 {
@@ -274,7 +301,8 @@ function local_business_jsonld(): array
     if ($logo) {
         $data['logo'] = abs_url(image_url($logo, 480));
     } else {
-        $data['logo'] = abs_url('/assets/img/logo-mark.svg');
+        // PNG, а не SVG: так логотип точно примут и Google, и Яндекс
+        $data['logo'] = abs_url('/assets/img/logo.png');
     }
     $og = site_og_image();
     if ($og) {

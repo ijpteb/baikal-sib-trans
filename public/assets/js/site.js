@@ -38,15 +38,273 @@ function iconSvg(name) {
   return `<svg class="icon" width="24" height="24" aria-hidden="true" focusable="false"><use href="#i-${name}"></use></svg>`;
 }
 
-function todayIso() {
-  const d = new Date();
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const pad2 = (n) => String(n).padStart(2, '0');
+
+function isoDate(d) {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 }
 
-function formatDate(iso) {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
-  return m ? `${m[3]}.${m[2]}.${m[1]}` : '';
+function todayIso() {
+  return isoDate(new Date());
+}
+
+/* ---------- Дата и время: дд.мм.гггг и чч:мм в любом браузере ---------- */
+
+const WEEKDAYS = ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота'];
+// Начала названий месяцев — для даты словами из переписки: «25 декабря 2026», «1 мая 2027 г.»
+const MONTH_STEMS = ['янв', 'фев', 'мар', 'апр', 'ма', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+
+/** Пока человек печатает: «25122026» → «25.12.2026», «1.2.» → «01.02.». Здесь только вид, без проверки. */
+function maskDate(raw) {
+  const text = String(raw || '');
+  // Вставили дату, где год впереди: «2026-12-25», «2026.1.5»
+  const yearFirst = /^\s*(\d{4})[-./](\d{1,2})[-./](\d{1,2})\s*$/.exec(text);
+  if (yearFirst) return `${yearFirst[3].padStart(2, '0')}.${yearFirst[2].padStart(2, '0')}.${yearFirst[1]}`;
+  // Вставили дату словами: «25 декабря 2026», «1 мая 2027 года»
+  const words = /^\s*(\d{1,2})\s+([а-яё]{3,})\.?\s+(\d{4})(?:\s*г(?:ода?)?\.?)?\s*$/i.exec(text);
+  if (words) {
+    const month = MONTH_STEMS.findIndex((stem) => words[2].toLowerCase().startsWith(stem)) + 1;
+    if (month) return `${words[1].padStart(2, '0')}.${pad2(month)}.${words[3]}`;
+  }
+  const groups = text.split(/\D+/);
+  let digits = '';
+  groups.forEach((group, i) => {
+    // День или месяц одной цифрой, после которой поставили точку: «1.» → «01.»
+    digits += i < groups.length - 1 && group.length === 1 && digits.length < 4 ? `0${group}` : group;
+  });
+  // День не начинается с 4–9, месяц — с 2–9: «5122026» → «05.12.2026», «254» → «25.04».
+  if (/^[4-9]/.test(digits)) digits = `0${digits}`;
+  if (/^\d{2}[2-9]/.test(digits)) digits = `${digits.slice(0, 2)}0${digits.slice(2)}`;
+  digits = digits.slice(0, 8);
+  let out = digits.slice(0, 2);
+  if (digits.length > 2) out += `.${digits.slice(2, 4)}`;
+  if (digits.length > 4) out += `.${digits.slice(4)}`;
+  if (/\D$/.test(text) && (digits.length === 2 || digits.length === 4)) out += '.';
+  return out;
+}
+
+/** «1430» → «14:30», «930» → «09:30», «9:5» → «09:5». Время — только 24 часа. */
+function maskTime(raw) {
+  const text = String(raw || '');
+  const groups = text.split(/\D+/);
+  const separated = groups.length > 1;
+  let digits = groups.join('');
+  // Час одной цифрой: «9:30», «930» и «9» — это 09:30 и 09, а не 93.
+  // Явно написанные «24:00» или «30:00» не переделываем — их подсветит проверка.
+  if ((separated && groups[0].length === 1) || (/^[3-9]/.test(digits) && !(separated && groups[0].length === 2))) {
+    digits = `0${digits}`;
+  }
+  digits = digits.slice(0, 4);
+  let out = digits.slice(0, 2);
+  if (digits.length > 2) out += `:${digits.slice(2)}`;
+  if (/\D$/.test(text) && digits.length === 2) out += ':';
+  return out;
+}
+
+/** После ввода: «25.12.26» → «25.12.2026», «1.2.2027» → «01.02.2027». Неполную дату не трогаем — её подсветит проверка. */
+function normalizeDateText(value) {
+  const raw = String(value || '').trim();
+  // Стёрли день или месяц и ушли с поля («.12.2026», «25..2026», «25.2026»): цифры не переставляем,
+  // иначе месяц или год «съедут» на чужое место. Проверка попросит дописать дату.
+  if (/^\.|\.\s*\.|^\d{1,2}\.\d{4}$/.test(raw)) return raw;
+  const text = maskDate(raw);
+  const short = /^(\d{2})\.(\d{2})\.(\d{2})$/.exec(text);
+  return short ? `${short[1]}.${short[2]}.20${short[3]}` : text;
+}
+
+/** «9» → «09:00», «14» и «14:» → «14:00». */
+function normalizeTimeText(value) {
+  const raw = String(value || '').trim();
+  // Стёрли часы и ушли с поля («:30») — так и оставляем, проверка попросит дописать.
+  if (/^:|:\s*:/.test(raw)) return raw;
+  const text = maskTime(raw);
+  const hours = /^(\d{2}):?$/.exec(text);
+  return hours ? `${hours[1]}:00` : text;
+}
+
+/** «25.12.2026» → { iso: '2026-12-25', day: Date }; null — если такой даты нет. */
+function parseDateText(text) {
+  const m = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(text || '');
+  if (!m) return null;
+  const [day, month, year] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const d = new Date(year, month - 1, day);
+  if (d.getFullYear() !== year || d.getMonth() !== month - 1 || d.getDate() !== day) return null;
+  return { iso: `${m[3]}-${m[2]}-${m[1]}`, day: d };
+}
+
+function isoInYears(years) {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() + years);
+  return isoDate(d);
+}
+
+/** Что не так с датой заявки; пустая строка — всё в порядке (дата необязательна). */
+function dateProblem(value) {
+  const text = normalizeDateText(value);
+  if (!text) return '';
+  if (!/^\d{2}\.\d{2}\.\d{4}$/.test(text)) return 'Введите дату полностью: дд.мм.гггг';
+  const parsed = parseDateText(text);
+  if (!parsed) return 'Такой даты нет — проверьте день и месяц';
+  if (parsed.iso < todayIso()) return 'Эта дата уже прошла — выберите сегодня или позже';
+  if (parsed.iso > isoInYears(2)) return 'Проверьте год: дата больше чем через два года';
+  return '';
+}
+
+function timeProblem(value) {
+  const text = normalizeTimeText(value);
+  if (!text) return '';
+  const m = /^(\d{2}):(\d{2})$/.exec(text);
+  if (!m || Number(m[1]) > 23 || Number(m[2]) > 59) return 'Укажите время как чч:мм, например 08:30';
+  return '';
+}
+
+/** Для текста заявки: «25.12.2026 (пятница)». */
+function describeDate(value) {
+  const text = normalizeDateText(value);
+  const parsed = parseDateText(text);
+  return parsed ? `${text} (${WEEKDAYS[parsed.day.getDay()]})` : text;
+}
+
+/** Дописываем сокращения перед отправкой: «25.12.26» → «25.12.2026», «9» → «09:00». */
+function normalizeDateTimeFields(root) {
+  $$('[data-dt]', root).forEach((wrap) => {
+    const text = $('[data-dt-text]', wrap);
+    if (!text) return;
+    const next = (wrap.dataset.dt === 'time' ? normalizeTimeText : normalizeDateText)(text.value);
+    if (next !== text.value) text.value = next;
+  });
+}
+
+/** Календарь не даёт выбрать прошедший день и даты дальше двух лет (сегодня — по часам посетителя). */
+function limitDatePickers(root) {
+  const min = todayIso();
+  const max = isoInYears(2);
+  $$('input[type="date"][min]', root).forEach((input) => {
+    input.min = min;
+    input.max = max;
+  });
+}
+
+/**
+ * Поля даты и времени (разметка — dt_input() в PHP). Главное — текстовое поле: его значение уходит в заявку.
+ * Значок справа — прозрачное встроенное поле type="date|time": открывает календарь или выбор времени,
+ * а выбранное значение переносится в текст. Встроенное поле само ничего не показывает — поэтому
+ * формат «месяц/день/год» из настроек английского браузера на экран не попадает.
+ */
+function initDateTimeInputs() {
+  const coarse = window.matchMedia('(pointer: coarse)');
+  $$('[data-dt]').forEach((wrap) => {
+    const isTime = wrap.dataset.dt === 'time';
+    const text = $('[data-dt-text]', wrap);
+    const native = $('[data-dt-native]', wrap);
+    if (!text) return;
+    const mask = isTime ? maskTime : maskDate;
+    const normalize = isTime ? normalizeTimeText : normalizeDateText;
+    const extra = isTime ? /[^\d:]/g : /[^\d.]/g;
+
+    text.addEventListener('input', (event) => {
+      // Значение из календаря или вставки уже приведено к виду — его не трогаем.
+      if (!event.isTrusted) return;
+      // Стирание не переделываем — иначе стёртая точка тут же вернётся.
+      if (typeof event.inputType === 'string' && event.inputType.startsWith('delete')) return;
+      const raw = text.value;
+      const caret = text.selectionStart ?? raw.length;
+      if (caret < raw.length && document.activeElement === text) {
+        // Правят середину — день, месяц или час. Цифры не переставляем и нули не дописываем:
+        // иначе «1» в «1:30» сразу станет «01:30», и вторая цифра уже не поместится в поле.
+        // Убираем только лишние знаки; нули допишутся, когда человек уйдёт с поля.
+        const clean = raw.replace(extra, '');
+        if (clean === raw) return;
+        const pos = raw.slice(0, caret).replace(extra, '').length;
+        text.value = clean;
+        text.setSelectionRange(pos, pos);
+        return;
+      }
+      const next = mask(raw);
+      if (next !== raw) text.value = next;
+    });
+    text.addEventListener('change', () => {
+      const next = normalize(text.value);
+      if (next !== text.value) text.value = next;
+    });
+    // Готовое значение целиком: «18:30», «25.12.2026».
+    const complete = isTime ? /^\d{2}:\d{2}$/ : /^\d{2}\.\d{2}\.\d{4}$/;
+    // Вставка, перетаскивание мышью, подсказка клавиатуры или диктовка. Разбираем сами: браузер обрезал бы
+    // текст по длине поля раньше, чем уберутся пробелы и слова (« 25.12.2026», «в 18:30», «25 декабря 2026»).
+    const insert = (fragment) => {
+      const piece = String(fragment || '').trim();
+      if (!piece) return;
+      // Целая дата или время заменяет старое значение: если вклеить «18:30» в середину «14:30»,
+      // получится чужое время. Для времени дописанные «:00» не в счёт — «18» поверх часа меняет только час.
+      let next = isTime ? mask(piece) : normalize(piece);
+      if (!complete.test(next)) {
+        const start = text.selectionStart ?? text.value.length;
+        const end = text.selectionEnd ?? start;
+        const limit = text.maxLength > 0 ? text.maxLength : Infinity;
+        // Поле заполнено и ничего не выделено — как и сам браузер, ничего не добавляем.
+        if (start === end && text.value.length >= limit) return;
+        next = normalize(`${text.value.slice(0, start)}${piece}${text.value.slice(end)}`).slice(0, limit);
+      }
+      if (next === text.value) return;
+      text.value = next;
+      text.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+    text.addEventListener('paste', (event) => {
+      const pasted = event.clipboardData?.getData('text');
+      if (!pasted) return;
+      event.preventDefault();
+      insert(pasted);
+    });
+    text.addEventListener('beforeinput', (event) => {
+      // Текст целиком (перетащили мышью, подсказка клавиатуры, диктовка) разбираем так же, как вставку.
+      // Обычные нажатия клавиш — по одному знаку — идут своим путём, через 'input'.
+      if (event.isComposing || !event.cancelable) return;
+      const type = event.inputType;
+      if (type !== 'insertFromDrop' && type !== 'insertText' && type !== 'insertReplacementText') return;
+      const piece = event.data ?? event.dataTransfer?.getData('text/plain') ?? '';
+      if (piece.length < 2) return;
+      event.preventDefault();
+      insert(piece);
+    });
+
+    if (!native) return;
+    // Календарь открывается на уже введённой дате (или на сегодняшней, если дата не введена).
+    const syncNative = () => {
+      const value = normalize(text.value);
+      if (isTime) native.value = value && !timeProblem(value) ? value : '';
+      else native.value = parseDateText(value)?.iso || '';
+    };
+    const canShowPicker = typeof native.showPicker === 'function';
+    native.addEventListener('pointerdown', syncNative);
+    native.addEventListener('focus', syncNative);
+    native.addEventListener('mousedown', (event) => {
+      // На компьютере курсор ставим в текстовое поле: можно и выбрать в календаре, и допечатать.
+      if (!coarse.matches && canShowPicker) event.preventDefault();
+    });
+    native.addEventListener('click', (event) => {
+      // На телефоне встроенный выбор открывается сам — от касания (и без экранной клавиатуры).
+      if (coarse.matches || !canShowPicker) return;
+      try {
+        syncNative();
+        text.focus({ preventScroll: true });
+        native.showPicker();
+        event.preventDefault();
+      } catch (error) {
+        /* браузер откроет выбор сам */
+      }
+    });
+    const pick = (event) => {
+      event.stopPropagation();
+      const value = native.value;
+      const next = value ? (isTime ? value.slice(0, 5) : maskDate(value)) : '';
+      if (next === text.value) return;
+      text.value = next;
+      // Сообщаем форме, что поле изменилось: проверка снимет ошибку, если дата теперь верная.
+      text.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+    native.addEventListener('input', pick);
+    native.addEventListener('change', pick);
+  });
 }
 
 /* ---------- Уведомления (тосты) ---------- */
@@ -556,20 +814,25 @@ function validateContactForm(form, only = null) {
     else if (digits.length !== 11) errors.phone = 'Номер неполный: нужно +7 и ещё 10 цифр';
     else if (!/^7[3-9]/.test(digits)) errors.phone = 'Проверьте номер: после +7 обычно идёт 9 или код города';
   }
-  if (el.date && el.date.value && el.date.value < todayIso()) {
-    errors.date = 'Эта дата уже прошла — выберите сегодня или позже';
+  if (el.date) {
+    const problem = dateProblem(el.date.value);
+    if (problem) errors.date = problem;
+  }
+  if (el.time) {
+    const problem = timeProblem(el.time.value);
+    if (problem) errors.time = problem;
   }
   if (el.passengers && el.passengers.value !== '') {
     const n = Number(el.passengers.value);
     if (!Number.isInteger(n) || n < 1 || n > 999) errors.passengers = 'Количество пассажиров — от 1 до 999';
   }
-  const keys = only ? [only] : ['name', 'phone', 'date', 'passengers'];
+  const keys = only ? [only] : ['name', 'phone', 'date', 'time', 'passengers'];
   keys.forEach((key) => setFieldError(form, key, errors[key]));
   return only ? (errors[only] ? { [only]: errors[only] } : {}) : errors;
 }
 
 function focusFirstError(form, errors) {
-  const order = ['date', 'passengers', 'name', 'phone'];
+  const order = ['date', 'time', 'passengers', 'name', 'phone'];
   const first = order.find((key) => errors[key]);
   const field = first && $(`[data-field="${first}"]`, form);
   const control = field && $('input, select, textarea', field);
@@ -599,8 +862,7 @@ function resetForm(form) {
   $$('input[type="hidden"]', form).forEach((input) => { input.value = ''; });
   delete form.dataset.touched;
   $$('[data-field]', form).forEach((field) => setFieldError(form, field.dataset.field, ''));
-  const today = todayIso();
-  $$('input[type="date"]', form).forEach((input) => { input.min = today; });
+  limitDatePickers(form);
 }
 
 /* ---------- Заявка: сбор текста и отправка через мессенджер ---------- */
@@ -620,8 +882,7 @@ function composeRequestMessage(form) {
   const lines = ['Здравствуйте! Хочу заказать транспорт.'];
   const trip = form.querySelector('input[name="trip"]:checked');
   if (trip) lines.push(`Поездка: ${trip.value}`);
-  const date = formatDate(value('date'));
-  const when = [date, value('time')].filter(Boolean).join(', ');
+  const when = [describeDate(value('date')), normalizeTimeText(value('time'))].filter(Boolean).join(', ');
   if (when) lines.push(`Дата: ${when}`);
   if (value('from')) lines.push(`Откуда: ${value('from')}`);
   if (value('to')) lines.push(`Куда: ${value('to')}`);
@@ -639,7 +900,7 @@ function composeInspectionMessage(form) {
   const value = (name) => (el[name] ? String(el[name].value || '').trim() : '');
   const lines = ['Здравствуйте! Хочу записаться на техосмотр.'];
   if (value('category')) lines.push(`Категория: ${value('category')}`);
-  const when = [formatDate(value('date')), value('time')].filter(Boolean).join(', ');
+  const when = [describeDate(value('date')), normalizeTimeText(value('time'))].filter(Boolean).join(', ');
   if (when) lines.push(`Дата: ${when}`);
   if (value('car')) lines.push(`Автомобиль: ${value('car')}`);
   if (value('comment')) lines.push(`Комментарий: ${value('comment')}`);
@@ -663,6 +924,8 @@ function openRequest(prefill = {}) {
   ['date', 'from', 'to', 'passengers'].forEach((name) => {
     if (prefill[name] && el[name]) el[name].value = prefill[name];
   });
+  // Дату с первого экрана сразу проверяем: неполную или прошедшую человек увидит до отправки.
+  if (prefill.date) validateContactForm(requestForm, 'date');
   if (el.estimate) el.estimate.value = prefill.estimate || '';
   openDialog(requestDialog, prefill.opener);
 }
@@ -716,6 +979,7 @@ function handleSubmit(form, dialog, source, compose) {
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     form.dataset.touched = '1';
+    normalizeDateTimeFields(form);
     const errors = validateContactForm(form);
     if (Object.keys(errors).length) {
       focusFirstError(form, errors);
@@ -763,8 +1027,9 @@ function initRequest() {
   quick?.addEventListener('submit', (event) => {
     event.preventDefault();
     const el = quick.elements;
+    normalizeDateTimeFields(quick);
     openRequest({
-      date: el.date.value,
+      date: el.date.value.trim(),
       from: el.from.value.trim(),
       to: el.to.value.trim(),
       passengers: el.passengers.value,
@@ -962,8 +1227,8 @@ function initDemo() {
 /* ---------- Запуск ---------- */
 
 function init() {
-  const today = todayIso();
-  $$('input[type="date"]').forEach((input) => { input.min = today; });
+  limitDatePickers(document);
+  initDateTimeInputs();
   initDialogs();
   initHeader();
   initMenu();

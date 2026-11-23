@@ -22,6 +22,7 @@ $og = site_og_image();
 $jsonLd = array_values(array_filter((array) ($meta['jsonld'] ?? [])));
 $verification = preg_replace('/[^A-Za-z0-9_-]/', '', (string) setting('seo.yandex_verification', '')) ?? '';
 $customFavicon = site_has_custom_favicon();
+$iconVersion = favicon_version();
 $metrika = metrika_id();
 // Иконки всплывающих уведомлений: их рисует скрипт, поэтому добавляем в набор заранее.
 foreach (['check-circle', 'alert-circle', 'info'] as $toastIcon) {
@@ -64,12 +65,12 @@ foreach (['check-circle', 'alert-circle', 'info'] as $toastIcon) {
 <?php if ($verification !== ''): ?>
 <meta name="yandex-verification" content="<?= e($verification) ?>">
 <?php endif; ?>
-<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="icon" href="/favicon.ico?v=<?= e($iconVersion) ?>" sizes="32x32">
 <?php if (!$customFavicon): ?>
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.svg?v=<?= e($iconVersion) ?>" type="image/svg+xml">
 <?php endif; ?>
-<link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<link rel="manifest" href="/site.webmanifest">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png?v=<?= e($iconVersion) ?>">
+<link rel="manifest" href="/site.webmanifest?v=<?= e($iconVersion) ?>">
 <link rel="preload" href="/assets/fonts/manrope-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/manrope-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style><?= inline_css('site.css') ?></style>

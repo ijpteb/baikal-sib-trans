@@ -108,6 +108,54 @@ function icon(string $name, string $class = '', ?string $label = null): string
         . '><use href="#i-' . e($name) . '"></use></svg>';
 }
 
+/**
+ * Поле даты (дд.мм.гггг) или времени (чч:мм, 24 часа) — одинаковое в любом браузере.
+ * Встроенное поле type="date" показывает дату так, как настроен браузер: в английском —
+ * «месяц/день/год», а время — с AM/PM. Поэтому вводим текстом: точки и двоеточие ставятся сами.
+ * Значок справа — прозрачное встроенное поле поверх него: открывает календарь или выбор
+ * времени телефона и браузера, выбранное значение переносится в текст.
+ *
+ * $kind: 'date' или 'time'.
+ * $o: name, value, min, max, step (для встроенного выбора), describedby, required, attrs.
+ */
+function dt_input(string $kind, string $id, array $o = []): string
+{
+    $isDate = $kind !== 'time';
+    $text = array_replace([
+        'class' => 'input dt-input__text',
+        'type' => 'text',
+        'id' => $id,
+        'name' => $o['name'] ?? ($isDate ? 'date' : 'time'),
+        'value' => isset($o['value']) && is_scalar($o['value']) ? (string) $o['value'] : null,
+        'inputmode' => 'numeric',
+        'autocomplete' => 'off',
+        'spellcheck' => 'false',
+        'maxlength' => $isDate ? '10' : '5',
+        'placeholder' => $isDate ? 'дд.мм.гггг' : 'чч:мм',
+        'required' => !empty($o['required']),
+        'aria-describedby' => $o['describedby'] ?? null,
+        'aria-invalid' => !empty($o['invalid']) ? 'true' : null,
+        'data-dt-text' => true,
+    ], (array) ($o['attrs'] ?? []));
+    $native = [
+        'class' => 'dt-input__native',
+        'type' => $isDate ? 'date' : 'time',
+        'tabindex' => '-1',
+        'min' => $o['min'] ?? null,
+        'max' => $o['max'] ?? null,
+        'step' => $o['step'] ?? null,
+        'data-dt-native' => true,
+    ];
+    $title = $isDate ? 'Выбрать дату в календаре' : 'Выбрать время';
+    return '<div class="dt-input" data-dt="' . ($isDate ? 'date' : 'time') . '">'
+        . '<input' . attrs($text) . '>'
+        . '<span class="dt-input__picker" title="' . e($title) . '" aria-hidden="true">'
+        . icon($isDate ? 'calendar' : 'clock')
+        . '<input' . attrs($native) . '>'
+        . '</span>'
+        . '</div>';
+}
+
 /* ---------- Картинки ---------- */
 
 /** Адрес загруженной картинки нужной ширины (или ближайшей большей). */

@@ -392,7 +392,8 @@ button:disabled { cursor: not-allowed; }
 .icon-tile .icon { width: 26px; height: 26px; }
 
 /* ---------- Поля форм ---------- */
-.field { display: grid; gap: 6px; min-width: 0; }
+/* align-content: start — поле в строке рядом с более высоким (например, с ошибкой) не растягивается и не съезжает вниз */
+.field { display: grid; gap: 6px; min-width: 0; align-content: start; }
 .field__label { font-size: var(--fs-sm); font-weight: 600; color: var(--c-navy); }
 .field__label .req { color: var(--c-danger); font-weight: 700; }
 .field__hint { font-size: var(--fs-xs); color: var(--c-text-muted); line-height: 1.45; }
@@ -435,12 +436,52 @@ button:disabled { cursor: not-allowed; }
   background-position: right 14px center;
   background-size: 20px;
 }
-.input[type="date"], .input[type="time"] { min-width: 0; padding-inline: 12px; }
-.input[type="date"]::-webkit-date-and-time-value, .input[type="time"]::-webkit-date-and-time-value { text-align: left; }
+/* Дата и время: текст дд.мм.гггг / чч:мм и значок календаря справа (разметка — dt_input() в PHP).
+   Значок — прозрачное встроенное поле даты: оно только открывает календарь, сам текст пишет скрипт. */
+.dt-input { position: relative; min-width: 0; }
+.dt-input__picker { display: none; }
+/* Отступы подобраны так, чтобы «28.08.2028» целиком помещалась в половину формы на телефоне шириной 360 */
+.js .dt-input__text { padding-left: 12px; padding-right: 40px; }
+.js .dt-input__picker {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 40px;
+  display: grid;
+  place-items: center;
+  color: var(--c-primary);
+}
+.dt-input__picker .icon { width: 22px; height: 22px; pointer-events: none; transition: transform var(--dur-fast) var(--ease-out); }
+.dt-input__picker:hover .icon { transform: scale(1.1); }
+.dt-input__native {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+  font-size: 16px; /* иначе iPhone увеличит страницу при нажатии */
+  -webkit-appearance: none;
+  appearance: none;
+}
+.dt-input__native::-webkit-calendar-picker-indicator { position: absolute; inset: 0; width: auto; height: auto; margin: 0; padding: 0; opacity: 0; cursor: pointer; }
+/* Компьютер: список времени браузер рисует на своём языке (в английском — с AM/PM), а Safari его не умеет.
+   Поэтому там время печатают, а часы — только подсказка: щелчок по ним ставит курсор в поле.
+   На телефоне часы открывают выбор времени самого телефона. */
+@media (pointer: fine) {
+  .dt-input[data-dt="time"] .dt-input__picker { pointer-events: none; }
+}
 
 .field-row { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 /* Имя и телефон на узком экране — друг под другом */
 @media (max-width: 479.98px) { .field-row--contacts { grid-template-columns: minmax(0, 1fr); } }
+/* Совсем узкий телефон (320–349): дата целиком не влезает в половину строки — все поля друг под другом */
+@media (max-width: 349.98px) { .field-row { grid-template-columns: minmax(0, 1fr); } }
 /* Группа переключателей, оформленная как обычное поле */
 fieldset.field { margin: 0; padding: 0; border: 0; min-width: 0; }
 fieldset.field > legend { padding: 0; margin-bottom: 6px; }
@@ -558,7 +599,10 @@ fieldset.field > legend { padding: 0; margin-bottom: 6px; }
   transition: transform var(--dur) var(--ease-out);
 }
 .logo:hover { color: var(--c-navy); }
-.logo__mark { width: 40px; height: 40px; border-radius: 11px; }
+/* Знак компании — тонкие линии, поэтому чуть крупнее, чем был прежний залитый значок */
+.logo__mark { width: 48px; height: 48px; flex-shrink: 0; }
+/* В тёмном подвале знак белый */
+.logo--light .logo__mark { filter: brightness(0) invert(1); }
 .logo__text { display: grid; line-height: 1.15; }
 .logo__name { font-size: 1.0625rem; font-weight: 800; letter-spacing: -0.01em; }
 .logo__tagline { font-size: 0.75rem; font-weight: 600; color: var(--c-text-muted); }
@@ -766,6 +810,8 @@ fieldset.field > legend { padding: 0; margin-bottom: 6px; }
 }
 .hero__inner {
   display: grid;
+  /* minmax(0, …): колонка не становится шире экрана, даже если что-то внутри не помещается */
+  grid-template-columns: minmax(0, 1fr);
   gap: clamp(28px, 4vw, 56px);
   align-items: center;
   padding-block: clamp(32px, 5vw, 88px) clamp(40px, 6vw, 104px);
@@ -808,6 +854,12 @@ fieldset.field > legend { padding: 0; margin-bottom: 6px; }
 .quick-form__lead { color: var(--c-text-muted); font-size: var(--fs-sm); margin-bottom: 18px; }
 .quick-form__grid { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .quick-form__grid .field--wide { grid-column: 1 / -1; }
+@media (max-width: 379.98px) {
+  .quick-form { padding: 16px; }
+  /* Узкий телефон: кнопка «Подобрать транспорт» помещается в карточку */
+  .quick-form__submit { padding-inline: 16px; white-space: normal; }
+}
+@media (max-width: 349.98px) { .quick-form__grid { grid-template-columns: minmax(0, 1fr); } }
 .quick-form__submit { margin-top: 18px; }
 .quick-form__note { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 12px; font-size: var(--fs-xs); color: var(--c-text-muted); text-align: center; }
 .quick-form__note .icon { width: 15px; height: 15px; }
@@ -1704,4 +1756,9 @@ dialog .toast { animation-name: toast-in-top; }
   .site-header, .action-bar, .toasts, .cookie-note, .map, .sheet { display: none !important; }
   body { padding: 0; }
   .hero, .page-hero { background: none; color: var(--c-text); }
+  /* Тёмный фон подвала браузер обычно не печатает: белые текст и знак пропали бы на белой бумаге. */
+  .site-footer, .site-footer * { color: var(--c-text) !important; background: none !important; }
+  .logo--light .logo__mark { filter: none; }
+  /* Блоки, до которых не долистали, ещё прозрачные — на бумаге они нужны целиком. */
+  .reveal-ready [data-reveal]:not(.is-visible) { opacity: 1; transform: none; transition: none; }
 }
