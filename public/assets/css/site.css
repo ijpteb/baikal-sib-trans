@@ -1225,14 +1225,14 @@ fieldset.field > legend { padding: 0; margin-bottom: 6px; }
 .accordion__item.is-open .accordion__icon { background: var(--c-primary); transform: rotate(180deg); }
 .accordion__item.is-open .accordion__icon::before, .accordion__item.is-open .accordion__icon::after { background: #fff; }
 .accordion__item.is-open .accordion__icon::after { transform: rotate(0deg); }
-/* Плавное раскрытие: grid-template-rows 0fr → 1fr */
+/* Раскрытие: место под ответ появляется сразу, а сам ответ плавно проявляется и чуть съезжает вниз.
+   Высоту не анимируем — только прозрачность и сдвиг, так страница не дёргается на слабых телефонах. */
 .accordion__panel {
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows var(--dur) var(--ease-out), visibility 0s linear var(--dur);
   visibility: hidden;
 }
-.accordion__item.is-open .accordion__panel { grid-template-rows: 1fr; visibility: visible; transition: grid-template-rows var(--dur) var(--ease-out), visibility 0s; }
+.accordion__item.is-open .accordion__panel { grid-template-rows: 1fr; visibility: visible; }
 .accordion__content { overflow: hidden; min-height: 0; }
 .accordion__content > div { padding: 0 20px 20px; color: var(--c-text-muted); opacity: 0; transform: translateY(-6px); transition: opacity var(--dur) var(--ease-out), transform var(--dur) var(--ease-out); }
 .accordion__item.is-open .accordion__content > div { opacity: 1; transform: none; }
