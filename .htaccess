@@ -4,7 +4,7 @@
 
 Options -Indexes
 
-<FilesMatch "(?i)\.(md|command|sqlite|sqlite3|db|json|lock|log|txt)$">
+<FilesMatch "(?i)\.(md|command|sqlite|sqlite3|db|json|lock|log|txt|zip)$">
     <IfModule mod_authz_core.c>
         Require all denied
     </IfModule>

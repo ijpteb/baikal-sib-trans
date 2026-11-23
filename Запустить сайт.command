@@ -14,17 +14,31 @@ pause_and_exit() {
   exit 1
 }
 
+print_addresses() {
+  echo "Сайт:    $URL"
+  echo "Админка: $URL/admin"
+  echo "         (при первом входе нужен код — он появится в папке data,"
+  echo "          в файле, имя которого начинается с SETUP_CODE)"
+}
+
+print_started() {
+  echo "Сайт запущен."
+  print_addresses
+  echo
+  echo "Чтобы остановить сайт, закройте это окно."
+}
+
 # Сайт уже запущен (например, из Claude) — просто открываем его.
 if curl -s -o /dev/null --max-time 2 "$URL"; then
-  echo "Сайт уже работает: $URL"
+  echo "Сайт уже работает."
+  print_addresses
   open "$URL"
   exit 0
 fi
 
 # Вариант 1: на компьютере установлен PHP 8.1 или новее.
 if command -v php >/dev/null 2>&1 && php -r 'exit(PHP_VERSION_ID >= 80100 ? 0 : 1);' 2>/dev/null; then
-  echo "Сайт запущен: $URL"
-  echo "Чтобы остановить сайт, закройте это окно."
+  print_started
   (sleep 1; open "$URL") &
   PHP_CLI_SERVER_WORKERS=4 php -d upload_max_filesize=16M -d post_max_size=64M \
     -S 127.0.0.1:$PORT -t public public/index.php
@@ -51,8 +65,7 @@ if command -v docker >/dev/null 2>&1; then
   fi
   docker rm -f baikal-site >/dev/null 2>&1
   trap 'docker stop baikal-site >/dev/null 2>&1' EXIT HUP INT TERM
-  echo "Сайт запущен: $URL"
-  echo "Чтобы остановить сайт, закройте это окно."
+  print_started
   (sleep 2; open "$URL") &
   docker run --rm --init --name baikal-site -p 127.0.0.1:$PORT:8000 \
     -e PHP_CLI_SERVER_WORKERS=4 -v "$PWD":/site -w /site baikal-php:8.4 \

@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * Первая настройка: создание учётной записи администратора.
  * Здесь же — новый пароль, если создан файл data/RESET_PASSWORD.
- * Для защиты нужен код из файла data/SETUP_CODE.txt (его видит только тот, у кого есть доступ к хостингу).
+ * Для защиты нужен код из файла data/SETUP_CODE-….txt (его видит только тот, у кого есть доступ к хостингу).
  */
 
 $hasUsers = admin_has_users();
@@ -36,7 +36,7 @@ if (is_post()) {
         $errors['form'] = 'Слишком много попыток. Подождите ' . max(1, (int) ceil($wait / 60)) . ' мин. и попробуйте снова.';
     } elseif (!hash_equals($code, $given)) {
         login_register_failure($ip);
-        $errors['code'] = 'Код не подходит. Откройте файл SETUP_CODE.txt в папке data и введите 8 цифр из него.';
+        $errors['code'] = 'Код не подходит. Откройте в папке data файл, имя которого начинается с SETUP_CODE, и введите 8 цифр из него.';
     } else {
         $problem = username_problem($values['username']);
         if ($problem !== null) {

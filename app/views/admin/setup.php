@@ -25,14 +25,14 @@
     <?= csrf_field() ?>
     <div class="setup-code">
       <p class="setup-code__title"><?= icon('shield-check') ?>Сначала — защитный код</p>
-      <p>Код лежит в файле <b>SETUP_CODE.txt</b> в папке <b>data</b> сайта. Откройте его:</p>
+      <p>Код лежит в папке <b>data</b> сайта, в файле, имя которого начинается с <b>SETUP_CODE</b> (например, SETUP_CODE-3f9a1c2b7d4e.txt). Откройте его:</p>
       <ul>
         <li>на хостинге — в файловом менеджере панели управления;</li>
         <li>на своём компьютере — в папке проекта → <b>data</b>.</li>
       </ul>
       <p class="setup-code__why">Так никто посторонний не сможет занять админку раньше вас.</p>
     </div>
-    <?= af_input('code', 'Код из файла SETUP_CODE.txt', '', [
+    <?= af_input('code', 'Код из файла SETUP_CODE', '', [
         'required' => true,
         'inputmode' => 'numeric',
         'autocomplete' => 'one-time-code',

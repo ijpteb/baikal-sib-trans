@@ -11,7 +11,7 @@ const LOGIN_MAX_ATTEMPTS = 5;          // попыток входа…
 const LOGIN_WINDOW_SECONDS = 900;      // …за 15 минут с одного адреса
 const ADMIN_IDLE_SECONDS = 8 * 3600;   // без действий 8 часов — нужно войти снова
 const RESET_PASSWORD_FILE = 'RESET_PASSWORD';
-const SETUP_CODE_FILE = 'SETUP_CODE.txt';
+const SETUP_CODE_PREFIX = 'SETUP_CODE';
 
 function admin_session_start(): void
 {
@@ -208,20 +208,23 @@ function password_reset_finish(): bool
 }
 
 /**
- * Код для первой настройки и для сброса пароля. Сайт кладёт его в файл data/SETUP_CODE.txt:
- * прочитать файл может только тот, у кого есть доступ к хостингу. Так чужой человек не займёт админку,
- * даже если откроет /admin/setup раньше владельца.
+ * Код для первой настройки и для сброса пароля. Сайт кладёт его в папку data, в файл
+ * SETUP_CODE-<случайные буквы и цифры>.txt: прочитать его может только тот, у кого есть доступ к хостингу.
+ * Так чужой человек не займёт админку, даже если откроет /admin/setup раньше владельца.
+ * Случайное имя — на случай, если папка data по ошибке окажется открытой из интернета:
+ * файл с известным именем можно было бы скачать, а угадать случайное нельзя.
  */
 function setup_code(): ?string
 {
-    $file = DATA_DIR . '/' . SETUP_CODE_FILE;
-    if (is_file($file)) {
-        $code = preg_replace('/\D+/', '', (string) file_get_contents($file)) ?? '';
-        if (strlen($code) === 8) {
+    foreach (setup_code_files() as $file) {
+        $code = preg_replace('/\D+/', '', (string) @file_get_contents($file)) ?? '';
+        if (strlen($code) === 8 && preg_match('/-[a-f0-9]{12}\.txt$/', $file) === 1) {
             return $code;
         }
     }
+    setup_code_clear(); // старые и испорченные файлы с кодом убираем, чтобы не перепутать
     $code = (string) random_int(10000000, 99999999);
+    $file = DATA_DIR . '/' . SETUP_CODE_PREFIX . '-' . bin2hex(random_bytes(6)) . '.txt';
     // В пояснении не должно быть других цифр: при чтении из файла берутся все цифры подряд.
     $text = 'Код для настройки админки сайта: ' . substr($code, 0, 4) . '-' . substr($code, 4) . "\n\n"
         . "Введите его на странице /admin/setup.\n"
@@ -232,10 +235,21 @@ function setup_code(): ?string
     return $code;
 }
 
+/** Файлы с кодом настройки в папке data (обычно один). */
+function setup_code_files(): array
+{
+    $files = [];
+    foreach (is_dir(DATA_DIR) ? (scandir(DATA_DIR) ?: []) : [] as $name) {
+        if (preg_match('/^' . SETUP_CODE_PREFIX . '(?:-[A-Za-z0-9]+)?\.txt$/', $name) === 1) {
+            $files[] = DATA_DIR . '/' . $name;
+        }
+    }
+    return $files;
+}
+
 function setup_code_clear(): void
 {
-    $file = DATA_DIR . '/' . SETUP_CODE_FILE;
-    if (is_file($file)) {
+    foreach (setup_code_files() as $file) {
         @unlink($file);
     }
 }

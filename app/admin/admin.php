@@ -684,9 +684,12 @@ function admin_checklist(): array
         site_logo() !== null ? 'Логотип загружен.' : 'Сейчас в шапке стандартный знак с названием.',
         '/admin/texts', 'Загрузить');
 
-    $add('og', is_array(setting('site.og_image', [])) && !empty(setting('site.og_image', [])['file']), false,
+    $ogCustom = is_array(setting('site.og_image', [])) && !empty(setting('site.og_image', [])['file']);
+    $add('og', $ogCustom, false,
         'Картинка для ссылок в мессенджерах',
-        'Её видно, когда ссылку на сайт отправляют в чат.',
+        $ogCustom
+            ? 'Загружена ваша картинка.'
+            : 'Её видно, когда ссылку на сайт отправляют в чат. Сейчас показывается стандартная — с названием компании и автобусом. Можно заменить её фото вашего автобуса.',
         '/admin/texts', 'Загрузить');
 
     $add('metrika', metrika_id() !== '', false,
@@ -803,6 +806,12 @@ function admin_system_checks(): array
 
     if (!function_exists('exif_read_data')) {
         $checks[] = ['status' => 'warn', 'title' => 'Нет расширения EXIF', 'text' => 'Некоторые фото с телефона могут загрузиться повёрнутыми. Включите расширение «exif» в настройках PHP.'];
+    }
+
+    // Фото с телефона весят 3–12 МБ, сайт принимает до 15 МБ — но хостинг может ограничить размер сильнее.
+    $uploadLimit = upload_limit_bytes();
+    if ($uploadLimit > 0 && $uploadLimit < IMAGE_MAX_BYTES) {
+        $checks[] = ['status' => 'warn', 'title' => 'Фото — не больше ' . format_bytes($uploadLimit), 'text' => 'Хостинг не примет фото крупнее ' . format_bytes($uploadLimit) . '. Чтобы загружать снимки с телефона до 15 МБ, в настройках PHP на хостинге поставьте upload_max_filesize = 16M и post_max_size = 20M (как это сделать — в README-RU.md, раздел «Если что-то не работает»).'];
     }
 
     $checks[] = is_https()
