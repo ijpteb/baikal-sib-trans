@@ -548,6 +548,7 @@ fieldset.field > legend { padding: 0; margin-bottom: 6px; }
 
 .logo {
   display: inline-flex;
+  flex-shrink: 0; /* в тесной шапке логотип не сжимается, название не переносится */
   align-items: center;
   gap: 10px;
   min-height: 44px;
@@ -571,7 +572,7 @@ fieldset.field > legend { padding: 0; margin-bottom: 6px; }
   align-items: center;
   gap: 6px;
   min-height: 44px;
-  padding: 8px 12px;
+  padding: 8px 10px;
   border-radius: var(--r-sm);
   color: var(--c-navy);
   font-size: var(--fs-sm);
@@ -582,7 +583,7 @@ fieldset.field > legend { padding: 0; margin-bottom: 6px; }
 .nav__link::after {
   content: "";
   position: absolute;
-  left: 12px; right: 12px; bottom: 6px;
+  left: 10px; right: 10px; bottom: 6px;
   height: 2px;
   border-radius: 2px;
   background: var(--c-primary);
@@ -600,7 +601,8 @@ fieldset.field > legend { padding: 0; margin-bottom: 6px; }
 .header-phone { display: none; text-decoration: none; color: var(--c-navy); line-height: 1.2; }
 .header-phone__number { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 1.0625rem; white-space: nowrap; }
 .header-phone__number .icon { color: var(--c-primary); width: 18px; height: 18px; }
-.header-phone__hint { display: block; padding-left: 26px; font-size: 0.75rem; color: var(--c-text-muted); white-space: nowrap; }
+/* Часы диспетчера пишут в админке своими словами — длинный текст обрезаем многоточием, чтобы шапка не разъехалась */
+.header-phone__hint { display: block; max-width: 186px; padding-left: 26px; overflow: hidden; text-overflow: ellipsis; font-size: 0.75rem; color: var(--c-text-muted); white-space: nowrap; }
 .header-phone:hover .header-phone__number { color: var(--c-primary); }
 .header-cta { display: none; }
 
@@ -634,18 +636,15 @@ fieldset.field > legend { padding: 0; margin-bottom: 6px; }
 @media (min-width: 640px) {
   .header-cta { display: inline-flex; }
 }
-@media (min-width: 1024px) {
-  .nav { display: block; }
-  .burger { display: none; }
+/* С планшета нижней панели нет — телефон всегда виден в шапке */
+@media (min-width: 768px) {
   .header-phone { display: block; }
 }
-/* На ноутбуках меню, телефон и кнопка не помещаются в одну строку — кнопку прячем (заявка есть в меню и на странице) */
-@media (min-width: 1024px) and (max-width: 1279.98px) {
-  .header-cta { display: none; }
-}
-@media (min-width: 1024px) and (max-width: 1179.98px) {
-  .header-phone__hint { display: none; }
-  .nav__link { padding-inline: 9px; }
+/* Пункты меню в строку — только когда рядом помещаются и телефон, и кнопка «Заказать транспорт».
+   На планшетах и небольших ноутбуках меню открывается кнопкой, а звонок и заявка остаются в шапке. */
+@media (min-width: 1280px) {
+  .nav { display: block; }
+  .burger { display: none; }
 }
 
 /* ---------- Мобильное меню на весь экран ---------- */
@@ -730,6 +729,18 @@ fieldset.field > legend { padding: 0; margin-bottom: 6px; }
 
 @keyframes menu-in { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: none; } }
 @keyframes menu-out { to { opacity: 0; transform: translateY(-8px); } }
+
+/* На планшете и ноутбуке меню — панель справа поверх затемнённой страницы, а не весь экран */
+@media (min-width: 768px) {
+  .menu { width: min(440px, 100%); margin: 0 0 0 auto; box-shadow: var(--shadow-lg); }
+  .menu::backdrop { background: rgba(7, 26, 46, 0.45); animation: fade-in var(--dur) ease; }
+  .menu.is-closing::backdrop { animation: fade-out var(--dur-fast) ease forwards; }
+  .menu[open] { animation-name: drawer-in; }
+  .menu.is-closing { animation-name: drawer-out; }
+  .menu__link { font-size: 1.25rem; }
+}
+@keyframes drawer-in { from { transform: translateX(100%); } to { transform: none; } }
+@keyframes drawer-out { to { transform: translateX(100%); } }
 @keyframes rise-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 
@@ -1394,6 +1405,11 @@ a.contact-line__value:hover { color: var(--c-primary); text-decoration: underlin
 .sheet__footer--split { grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); }
 /* На узком экране подпись может перенестись на вторую строку, но кнопка не вылезет за край */
 .sheet__footer--split .btn { padding-inline: 12px; white-space: normal; }
+/* На телефоне «Изменить» занимает ровно своё место — так «Скопировать текст» помещается в одну строку */
+@media (max-width: 479.98px) {
+  .sheet__footer--split { grid-template-columns: auto minmax(0, 1fr); }
+  .sheet__footer--split .btn--ghost { padding-inline: 8px; }
+}
 @keyframes sheet-up { from { transform: translateY(100%); } to { transform: none; } }
 @keyframes sheet-down { to { transform: translateY(100%); } }
 @keyframes fade-out { to { opacity: 0; } }
@@ -1421,6 +1437,11 @@ a.contact-line__value:hover { color: var(--c-primary); text-decoration: underlin
 .trip-types span { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 14px; border: 1.5px solid var(--c-border-strong); border-radius: var(--r-pill); font-size: var(--fs-sm); font-weight: 600; cursor: pointer; transition: background-color var(--dur-fast) ease, border-color var(--dur-fast) ease, color var(--dur-fast) ease; }
 .trip-types input:checked + span { background: var(--c-primary); border-color: var(--c-primary); color: #fff; }
 .trip-types input:focus-visible + span { outline: 3px solid var(--c-focus); outline-offset: 2px; }
+/* На телефоне типы поездки компактнее: до поля «Имя» меньше листать. */
+@media (max-width: 479.98px) {
+  .trip-types { gap: 8px 6px; }
+  .trip-types span { min-height: 40px; padding: 6px 12px; font-size: 0.875rem; }
+}
 .request-form__privacy { display: flex; gap: 8px; font-size: var(--fs-xs); color: var(--c-text-muted); line-height: 1.5; }
 .request-form__privacy .icon { width: 16px; height: 16px; margin-top: 2px; flex-shrink: 0; }
 
@@ -1525,6 +1546,10 @@ a.contact-line__value:hover { color: var(--c-primary); text-decoration: underlin
 .toast.is-leaving { animation: toast-out var(--dur-fast) ease forwards; }
 @keyframes toast-in { from { opacity: 0; transform: translateY(16px) scale(0.97); } to { opacity: 1; transform: none; } }
 @keyframes toast-out { to { opacity: 0; transform: translateY(8px); } }
+/* Пока открыто окно (заявка, выбор мессенджера), уведомление живёт внутри него и выезжает сверху — не закрывает кнопки окна */
+dialog .toasts { top: calc(12px + env(safe-area-inset-top, 0px)); bottom: auto; }
+dialog .toast { animation-name: toast-in-top; }
+@keyframes toast-in-top { from { opacity: 0; transform: translateY(-16px) scale(0.97); } to { opacity: 1; transform: none; } }
 
 /* Уведомление о cookie (только если включена Яндекс Метрика) */
 .cookie-note {

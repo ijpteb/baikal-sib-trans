@@ -34,7 +34,7 @@ $requestHref = $page === 'home' ? '#contacts' : '/#contacts';
       <a class="header-phone" href="<?= e($phone['href']) ?>">
         <span class="header-phone__number"><?= icon('phone') ?><?= e($phone['number']) ?></span>
 <?php if ($hours !== ''): ?>
-        <span class="header-phone__hint"><?= e($hours === 'Круглосуточно' ? 'Диспетчер круглосуточно' : $hours) ?></span>
+        <span class="header-phone__hint" title="<?= e($hours) ?>"><?= e($hours === 'Круглосуточно' ? 'Диспетчер круглосуточно' : $hours) ?></span>
 <?php endif; ?>
       </a>
 <?php endif; ?>
@@ -50,7 +50,7 @@ $requestHref = $page === 'home' ? '#contacts' : '/#contacts';
   <div class="menu__inner">
     <div class="container menu__top">
       <?= view('partials/logo') ?>
-      <button class="menu__close" type="button" aria-label="Закрыть меню" data-menu-close><?= icon('close') ?></button>
+      <button class="menu__close" type="button" aria-label="Закрыть меню" data-menu-close autofocus><?= icon('close') ?></button>
     </div>
     <nav class="container menu__nav" aria-label="Меню">
       <ul class="menu__list">

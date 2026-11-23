@@ -53,25 +53,44 @@ function formatDate(iso) {
 
 const toastBox = $('#toasts');
 
+/**
+ * Открытое окно (заявка, выбор мессенджера) перекрывает всю страницу — даже то, что поверх неё.
+ * Поэтому уведомления на это время переносим внутрь окна, а после закрытия — обратно.
+ * Возвращает true, если блок уведомлений пришлось перенести.
+ */
+function placeToasts() {
+  const open = $$('dialog[open]');
+  const host = open[open.length - 1] || document.body;
+  if (toastBox.parentElement === host) return false;
+  host.append(toastBox);
+  return true;
+}
+
 function toast(message, type = 'info', timeout = 4500) {
   if (!toastBox) return;
+  const moved = placeToasts();
   const el = document.createElement('div');
   el.className = `toast toast--${type}`;
   el.innerHTML = iconSvg(type === 'error' ? 'alert-circle' : type === 'success' ? 'check-circle' : 'info');
   const text = document.createElement('span');
   text.textContent = message;
   el.append(text);
-  toastBox.append(el);
   const remove = () => el.remove();
-  window.setTimeout(() => {
-    if (reducedMotion.matches) {
-      remove();
-      return;
-    }
-    el.classList.add('is-leaving');
-    el.addEventListener('animationend', remove, { once: true });
-    window.setTimeout(remove, 400);
-  }, timeout);
+  const show = () => {
+    toastBox.append(el);
+    window.setTimeout(() => {
+      if (reducedMotion.matches) {
+        remove();
+        return;
+      }
+      el.classList.add('is-leaving');
+      el.addEventListener('animationend', remove, { once: true });
+      window.setTimeout(remove, 400);
+    }, timeout);
+  };
+  // После переноса даём программам для незрячих заметить блок, иначе они могут не прочитать сообщение.
+  if (moved) window.setTimeout(show, 80);
+  else show();
 }
 
 /* ---------- Копирование в буфер обмена ---------- */
@@ -150,6 +169,10 @@ function initDialogs() {
     $$('[data-dialog-close]', dialog).forEach((button) => {
       button.addEventListener('click', () => closeDialog(dialog));
     });
+    // Окно закрылось — уведомления возвращаются на страницу и остаются видны.
+    dialog.addEventListener('close', () => {
+      if (toastBox && dialog.contains(toastBox)) document.body.append(toastBox);
+    });
     initSheetDrag(dialog);
   });
 }
@@ -220,7 +243,7 @@ function initMenu() {
     link.addEventListener('click', () => closeDialog(menu, { instant: true, keep: true }));
   });
   // Меню нужно только на узком экране: при повороте телефона или расширении окна закрываем его.
-  window.matchMedia('(min-width: 1024px)').addEventListener('change', (event) => {
+  window.matchMedia('(min-width: 1280px)').addEventListener('change', (event) => {
     if (event.matches) closeDialog(menu, { instant: true });
   });
 }
@@ -572,6 +595,8 @@ function attachLiveValidation(form) {
 function resetForm(form) {
   if (!form) return;
   form.reset();
+  // reset() не трогает скрытые поля (например, расчёт из калькулятора) — очищаем их сами.
+  $$('input[type="hidden"]', form).forEach((input) => { input.value = ''; });
   delete form.dataset.touched;
   $$('[data-field]', form).forEach((field) => setFieldError(form, field.dataset.field, ''));
   const today = todayIso();

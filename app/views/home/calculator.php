@@ -12,7 +12,8 @@ $hours = max(4, (int) ($first['minHours'] ?? 1));
 $km = 50;
 $estimate = calc_estimate($first, $mode, $mode === 'km' ? $km : $hours);
 $disclaimer = trim((string) setting('calculator.disclaimer', ''));
-$modeLabels = ['hour' => 'Почасово', 'km' => 'По километрам', 'transfer' => 'Трансфер'];
+// Подписи короткие: на телефоне все три помещаются в одну строку.
+$modeLabels = ['hour' => 'Почасово', 'km' => 'По км', 'transfer' => 'Трансфер'];
 ?>
 <section class="section" id="calculator" aria-labelledby="calc-title">
   <div class="container">
