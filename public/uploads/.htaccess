@@ -1,0 +1,30 @@
+# Загруженные через админку картинки.
+# Здесь не должно выполняться ничего, кроме отдачи изображений.
+Options -Indexes -ExecCGI
+
+<FilesMatch "(?i)\.(php[0-9]?|phtml|phar|pht|phps|cgi|pl|py|sh|shtml|asp|aspx|jsp|html?|xhtml|js|mjs|svgz|htaccess|htpasswd|ini)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order deny,allow
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Если PHP работает как модуль Apache — выключаем его в этой папке.
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
+
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set Cache-Control "public, max-age=31536000, immutable"
+    # SVG-логотипы: запрещаем любые скрипты внутри, даже если файл открыть напрямую
+    <FilesMatch "(?i)\.svg$">
+        Header set Content-Security-Policy "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox"
+    </FilesMatch>
+</IfModule>

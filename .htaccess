@@ -1,0 +1,23 @@
+# Этот файл нужен ТОЛЬКО если весь проект целиком загружен в папку public_html
+# (запасной вариант установки, см. README-RU.md).
+# Тогда все запросы перенаправляются в папку public, а папки app и data закрыты.
+
+Options -Indexes
+
+<FilesMatch "(?i)\.(md|command|sqlite|sqlite3|db|json|lock|log|txt)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order deny,allow
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(app|data|\.git|\.claude)(/|$) - [F,L]
+    RewriteRule ^\.well-known/ - [L]
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>

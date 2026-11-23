@@ -1,0 +1,14 @@
+# База данных и служебные файлы сайта (у каждой копии сайта — свои)
+/data/*
+!/data/.htaccess
+!/data/README.txt
+
+# Загруженные через админку картинки
+/public/uploads/*
+!/public/uploads/.htaccess
+
+# macOS
+.DS_Store
+
+# Локальные настройки Claude Code
+/.claude/settings.local.json
